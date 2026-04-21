@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Löffler Sales">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0e17">
+<title>Löffler Sales Terminal</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #0a0e17;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2332;
+  --border: #1e2d3d;
+  --green: #00e676;
+  --green-dim: #00c853;
+  --green-bg: rgba(0,230,118,0.08);
+  --red: #ff5252;
+  --red-bg: rgba(255,82,82,0.08);
+  --amber: #ffab40;
+  --amber-bg: rgba(255,171,64,0.08);
+  --blue: #448aff;
+  --text: #e8eaed;
+  --text-dim: #8899aa;
+  --text-muted: #556677;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Space Grotesk', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.terminal {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  padding: 12px 16px 0;
+  gap: 10px;
+}
+
+/* HEADER */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.header-left { display: flex; align-items: center; gap: 10px; }
+.logo {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--green), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--green);
+  background: var(--green-bg);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(0,230,118,0.2);
+}
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--green); }
+  50% { opacity: 0.4; box-shadow: none; }
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.clock { font-size: 15px; color: var(--text); font-weight: 500; }
+.date-display { display: none; }
+
+/* MAIN — RESPONSIVE */
+.main {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Landscape iPad */
+@media (orientation: landscape) {
+  .main {
+    grid-template-columns: 1fr 280px;
+  }
+}
+/* Portrait iPad */
+@media (orientation: portrait) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .feed-section { max-height: 35vh; }
+}
+
+/* CHART AREA */
+.chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .metrics-row { grid-template-columns: repeat(2, 1fr); }
+}
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: border-color 0.3s, background 0.3s;
+}
+.metric-card.flash { border-color: var(--green); background: var(--green-bg); }
+.metric-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+}
+.metric-value {
+  font-size: 20px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.metric-value.green { color: var(--green); }
+.metric-value.amber { color: var(--amber); }
+.metric-change {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+.metric-change.up { color: var(--green); }
+.metric-change.down { color: var(--red); }
+
+.chart-container {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 180px;
+  position: relative;
+}
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.chart-title {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.chart-timeframes { display: flex; gap: 4px; }
+.tf-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  -webkit-appearance: none;
+  touch-action: manipulation;
+}
+.tf-btn.active, .tf-btn:hover {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: var(--green);
+}
+.chart-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: calc(100% - 36px);
+}
+#revenueChart { width: 100%; height: 100%; }
+
+/* ORDER FEED */
+.feed-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.feed-title {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.order-count-badge {
+  font-size: 10px;
+  background: var(--green-bg);
+  color: var(--green);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,230,118,0.2);
+}
+.feed-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.order-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.3s, background 0.3s;
+  flex-shrink: 0;
+}
+.order-card.new {
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+@keyframes slideIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.order-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.order-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--blue);
+}
+.order-amount {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--green);
+}
+.order-details {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.order-product {
+  color: var(--text);
+  font-weight: 500;
+}
+.order-time {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* TICKER */
+.ticker-bar {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+  white-space: nowrap;
+  margin: 0 -16px;
+  padding: 6px 16px;
+}
+.ticker-content {
+  display: inline-block;
+  animation: scroll 35s linear infinite;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+@keyframes scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-item { margin-right: 32px; }
+.ticker-item .amount { color: var(--green); font-weight: 500; }
+.ticker-item .product { color: var(--text); }
+.ticker-item .sep { color: var(--text-muted); margin: 0 6px; }
+
+/* FLASH OVERLAY */
+.flash-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+}
+.flash-overlay.active {
+  animation: flashAnim 0.8s ease-out forwards;
+}
+@keyframes flashAnim {
+  0% { box-shadow: inset 0 0 100px rgba(0,230,118,0.18); opacity: 1; }
+  100% { box-shadow: inset 0 0 0 transparent; opacity: 0; }
+}
+
+/* Sound toggle — larger touch target */
+.sound-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 6px;
+  -webkit-appearance: none;
+  touch-action: manipulation;
+  min-height: 36px;
+}
+.sound-toggle:hover, .sound-toggle.active {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-bg);
+}
+
+/* Landscape large screens (TV) */
+@media (min-width: 1200px) {
+  .terminal { padding: 20px 24px 0; gap: 16px; }
+  .logo { font-size: 22px; }
+  .metric-value { font-size: 26px; }
+  .clock { font-size: 18px; }
+  .date-display { display: inline; }
+  .main { grid-template-columns: 1fr 340px; }
+}
+
+/* Prevent iOS text size adjustment */
+html { -webkit-text-size-adjust: 100%; }
+
+/* Wake lock indicator */
+.wake-lock-status {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wake-lock-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+.wake-lock-dot.active { background: var(--green); }
+</style>
+</head>
+<body>
+
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<div class="terminal">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">Löffler Sales</div>
+      <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+    </div>
+    <div class="header-right">
+      <div class="wake-lock-status" id="wakeLockStatus">
+        <div class="wake-lock-dot" id="wakeLockDot"></div>
+        <span id="wakeLockText">Display</span>
+      </div>
+      <button class="sound-toggle active" id="soundToggle" onclick="toggleSound()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+        ON
+      </button>
+      <span class="date-display" id="dateDisplay"></span>
+      <span class="clock" id="clock"></span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="chart-section">
+      <div class="metrics-row">
+        <div class="metric-card" id="metricRevenue">
+          <div class="metric-label">Umsatz heute</div>
+          <div class="metric-value green" id="totalRevenue">€0</div>
+          <div class="metric-change up" id="revenueChange">--</div>
+        </div>
+        <div class="metric-card" id="metricOrders">
+          <div class="metric-label">Bestellungen</div>
+          <div class="metric-value" id="totalOrders">0</div>
+          <div class="metric-change up" id="ordersChange">--</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Ø Warenkorb</div>
+          <div class="metric-value amber" id="avgOrder">€0</div>
+          <div class="metric-change" id="avgChange">--</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Letzte Bestellung</div>
+          <div class="metric-value" id="lastOrderTime" style="font-size:16px">--:--</div>
+          <div class="metric-change" id="lastOrderAgo" style="color:var(--text-muted)">--</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-header">
+          <div class="chart-title">Umsatz — Heute</div>
+          <div class="chart-timeframes">
+            <button class="tf-btn active" onclick="setTimeframe('1h')">1H</button>
+            <button class="tf-btn" onclick="setTimeframe('4h')">4H</button>
+            <button class="tf-btn" onclick="setTimeframe('1d')">1D</button>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="revenueChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="feed-section">
+      <div class="feed-title">
+        Live-Bestellungen
+        <span class="order-count-badge" id="orderCountBadge">0 heute</span>
+      </div>
+      <div class="feed-list" id="feedList"></div>
+    </div>
+  </div>
+
+  <div class="ticker-bar">
+    <div class="ticker-content" id="tickerContent"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ============================================================
+// LÖFFLER SALES TERMINAL — iPad-optimized
+// ============================================================
+
+let soundEnabled = true;
+let orders = [];
+let revenueData = [];
+let cumulativeRevenue = 0;
+let chart = null;
+let audioCtx = null;
+let wakeLock = null;
+
+// --- LÖFFLER PRODUCTS ---
+const products = [
+  { name: 'Hotbond RF Trikot', cat: 'Rad', price: [89, 129] },
+  { name: 'Pace Shorts', cat: 'Lauf', price: [59, 79] },
+  { name: 'Worldcup Jacke', cat: 'Langlauf', price: [199, 299] },
+  { name: 'Aero Bib Tight', cat: 'Rad', price: [129, 179] },
+  { name: 'Trail Zip-Off Hose', cat: 'Outdoor', price: [119, 149] },
+  { name: 'Merino Baselayer', cat: 'Ski Touring', price: [69, 99] },
+  { name: 'WPM Pocket Weste', cat: 'Lauf', price: [89, 119] },
+  { name: 'Elastic Gel Handschuhe', cat: 'Rad', price: [39, 59] },
+  { name: 'Classico Hose lang', cat: 'Langlauf', price: [99, 139] },
+  { name: 'Speed Primaloft Jacke', cat: 'Ski Touring', price: [249, 329] },
+  { name: 'Aero Helm-Mütze', cat: 'Rad', price: [29, 39] },
+  { name: 'Thermo Velours Tights', cat: 'Lauf', price: [79, 109] },
+  { name: 'Gore-Tex Infinium Jacke', cat: 'Outdoor', price: [279, 349] },
+  { name: 'Funktionsunterwäsche Set', cat: 'Langlauf', price: [49, 79] },
+];
+const cities = ['Wien','Graz','Linz','Salzburg','Innsbruck','München','Berlin','Hamburg','Zürich','Bozen','Stuttgart','Klagenfurt','Bregenz','Ried i.I.','Wels','St. Pölten'];
+const catColors = { Rad:'#448aff', Lauf:'#00e676', Langlauf:'#ffab40', Outdoor:'#e040fb', 'Ski Touring':'#40c4ff' };
+
+// --- WAKE LOCK (keeps iPad screen on) ---
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      document.getElementById('wakeLockDot').classList.add('active');
+      document.getElementById('wakeLockText').textContent = 'Always on';
+      wakeLock.addEventListener('release', () => {
+        document.getElementById('wakeLockDot').classList.remove('active');
+        document.getElementById('wakeLockText').textContent = 'Display';
+      });
+    }
+  } catch (e) {
+    document.getElementById('wakeLockText').textContent = 'Auto-lock';
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+
+// --- AUDIO ---
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playOrderSound() {
+  if (!soundEnabled || !audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const now = audioCtx.currentTime;
+  const click = audioCtx.createOscillator();
+  const clickG = audioCtx.createGain();
+  click.type = 'square';
+  click.frequency.setValueAtTime(800, now);
+  click.frequency.exponentialRampToValueAtTime(200, now + 0.03);
+  clickG.gain.setValueAtTime(0.15, now);
+  clickG.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+  click.connect(clickG).connect(audioCtx.destination);
+  click.start(now); click.stop(now + 0.05);
+
+  const c1 = audioCtx.createOscillator();
+  const c1g = audioCtx.createGain();
+  c1.type = 'sine'; c1.frequency.setValueAtTime(2200, now + 0.06);
+  c1g.gain.setValueAtTime(0.2, now + 0.06);
+  c1g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+  c1.connect(c1g).connect(audioCtx.destination);
+  c1.start(now + 0.06); c1.stop(now + 0.35);
+
+  const c2 = audioCtx.createOscillator();
+  const c2g = audioCtx.createGain();
+  c2.type = 'sine'; c2.frequency.setValueAtTime(3300, now + 0.08);
+  c2g.gain.setValueAtTime(0.15, now + 0.08);
+  c2g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+  c2.connect(c2g).connect(audioCtx.destination);
+  c2.start(now + 0.08); c2.stop(now + 0.5);
+}
+
+function playBigOrderSound() {
+  if (!soundEnabled || !audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const now = audioCtx.currentTime;
+  [1800, 2200, 2800, 3400].forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f, now + i * 0.08);
+    g.gain.setValueAtTime(0.15, now + i * 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.4);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(now + i * 0.08); o.stop(now + i * 0.08 + 0.4);
+  });
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  if (soundEnabled && !audioCtx) initAudio();
+  const btn = document.getElementById('soundToggle');
+  btn.classList.toggle('active', soundEnabled);
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/>${soundEnabled ? '<path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/>' : '<line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>'}</svg> ${soundEnabled ? 'ON' : 'OFF'}`;
+}
+
+// --- CLOCK ---
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('dateDisplay').textContent = now.toLocaleDateString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// --- CHART ---
+function initChart() {
+  const ctx = document.getElementById('revenueChart').getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.clientHeight || 300);
+  gradient.addColorStop(0, 'rgba(0,230,118,0.25)');
+  gradient.addColorStop(1, 'rgba(0,230,118,0.0)');
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Kumulierter Umsatz',
+        data: [],
+        borderColor: '#00e676',
+        borderWidth: 2,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHitRadius: 15,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#00e676',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500, easing: 'easeOutQuart' },
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a2332',
+          borderColor: '#1e2d3d',
+          borderWidth: 1,
+          titleColor: '#8899aa',
+          bodyColor: '#e8eaed',
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'JetBrains Mono', size: 13, weight: '600' },
+          padding: 12,
+          displayColors: false,
+          callbacks: { label: (c) => '€' + Math.round(c.parsed.y).toLocaleString('de-AT') }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(30,45,61,0.5)', lineWidth: 0.5 },
+          ticks: { color: '#556677', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 8 },
+          border: { color: '#1e2d3d' }
+        },
+        y: {
+          grid: { color: 'rgba(30,45,61,0.5)', lineWidth: 0.5 },
+          ticks: {
+            color: '#556677',
+            font: { family: 'JetBrains Mono', size: 9 },
+            callback: (v) => '€' + (v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v))
+          },
+          border: { color: '#1e2d3d' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+function addChartPoint(time, cumRev) {
+  const label = time.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(cumRev);
+  if (chart.data.labels.length > 50) {
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+  chart.update('none');
+}
+
+// --- ORDER FEED ---
+function addOrder(order) {
+  orders.unshift(order);
+  cumulativeRevenue += order.amount;
+
+  const overlay = document.getElementById('flashOverlay');
+  overlay.classList.remove('active');
+  void overlay.offsetWidth;
+  overlay.classList.add('active');
+
+  if (order.amount > 200) playBigOrderSound();
+  else playOrderSound();
+
+  ['metricRevenue', 'metricOrders'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 800);
+  });
+
+  document.getElementById('totalRevenue').textContent = '€' + Math.round(cumulativeRevenue).toLocaleString('de-AT');
+  document.getElementById('totalOrders').textContent = orders.length;
+  document.getElementById('avgOrder').textContent = '€' + Math.round(cumulativeRevenue / orders.length).toLocaleString('de-AT');
+  document.getElementById('lastOrderTime').textContent = order.time.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('lastOrderAgo').textContent = 'gerade eben';
+  document.getElementById('orderCountBadge').textContent = orders.length + ' heute';
+
+  if (orders.length > 1) {
+    document.getElementById('revenueChange').textContent = '+€' + Math.round(order.amount).toLocaleString('de-AT');
+  }
+
+  addChartPoint(order.time, cumulativeRevenue);
+  renderFeed();
+  updateTicker();
+}
+
+function renderFeed() {
+  const list = document.getElementById('feedList');
+  const visible = orders.slice(0, 15);
+  list.innerHTML = visible.map((o, i) => `
+    <div class="order-card${i === 0 ? ' new' : ''}">
+      <div class="order-top">
+        <span class="order-id">#${o.id}</span>
+        <span class="order-amount">€${Math.round(o.amount).toLocaleString('de-AT')}</span>
+      </div>
+      <div class="order-details">
+        <span class="order-product">${o.items.map(it => it.qty + 'x ' + it.name).join(', ')}</span><br>
+        <span style="color:${catColors[o.items[0].cat] || '#8899aa'}">${o.items[0].cat}</span> · ${o.city}
+      </div>
+      <div class="order-time">${o.time.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+    </div>
+  `).join('');
+  setTimeout(() => {
+    const first = list.querySelector('.order-card.new');
+    if (first) first.classList.remove('new');
+  }, 2000);
+}
+
+function updateTicker() {
+  const recent = orders.slice(0, 12);
+  const items = recent.map(o =>
+    `<span class="ticker-item"><span class="amount">€${Math.round(o.amount)}</span><span class="sep">|</span><span class="product">${o.items[0].name}</span><span class="sep">|</span>${o.city}</span>`
+  ).join('');
+  document.getElementById('tickerContent').innerHTML = items + items;
+}
+
+// --- SIMULATION ---
+let orderCounter = 100000;
+
+function generateOrder() {
+  const numItems = Math.random() < 0.7 ? 1 : (Math.random() < 0.7 ? 2 : 3);
+  const items = [];
+  let total = 0;
+  for (let i = 0; i < numItems; i++) {
+    const p = products[Math.floor(Math.random() * products.length)];
+    const price = p.price[0] + Math.random() * (p.price[1] - p.price[0]);
+    const qty = Math.random() < 0.85 ? 1 : 2;
+    items.push({ name: p.name, cat: p.cat, price: Math.round(price), qty });
+    total += price * qty;
+  }
+  return { id: ++orderCounter, amount: total, items, city: cities[Math.floor(Math.random() * cities.length)], time: new Date() };
+}
+
+function simulateOrders() {
+  for (let i = 0; i < 5; i++) {
+    const order = generateOrder();
+    order.time = new Date(Date.now() - (5 - i) * 120000);
+    orders.push(order);
+    cumulativeRevenue += order.amount;
+    addChartPoint(order.time, cumulativeRevenue);
+  }
+  document.getElementById('totalRevenue').textContent = '€' + Math.round(cumulativeRevenue).toLocaleString('de-AT');
+  document.getElementById('totalOrders').textContent = orders.length;
+  document.getElementById('avgOrder').textContent = '€' + Math.round(cumulativeRevenue / orders.length).toLocaleString('de-AT');
+  document.getElementById('orderCountBadge').textContent = orders.length + ' heute';
+  renderFeed();
+  updateTicker();
+
+  function scheduleNext() {
+    setTimeout(() => { addOrder(generateOrder()); scheduleNext(); }, 8000 + Math.random() * 17000);
+  }
+  scheduleNext();
+}
+
+// --- INIT ---
+document.addEventListener('touchstart', () => {
+  if (!audioCtx) initAudio();
+  requestWakeLock();
+}, { once: true });
+document.addEventListener('click', () => {
+  if (!audioCtx) initAudio();
+  requestWakeLock();
+}, { once: true });
+
+initChart();
+simulateOrders();
+
+setInterval(() => {
+  if (orders.length > 0) {
+    const ago = Math.round((Date.now() - orders[0].time.getTime()) / 1000);
+    document.getElementById('lastOrderAgo').textContent = ago < 60 ? `vor ${ago}s` : `vor ${Math.round(ago / 60)}min`;
+  }
+}, 5000);
+</script>
+</body>
+</html>
